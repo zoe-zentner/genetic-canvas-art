@@ -38,4 +38,36 @@ export class Polygon {
         ctx.fillStyle = `rgba(${this.color.r}, ${this.color.g}, ${this.color.b}, ${this.color.a})`;
         ctx.fill();
     }
+
+    mutate(canvasWidth: number, canvasHeight: number) {
+        // 30% change to mutate a color property
+        if (Math.random() < 0.3) {
+            const property = ['r', 'g', 'b', 'a'][Math.floor(Math.random() * 4)];
+            if (property === 'a') {
+                this.color.a = Math.min(
+                    1,
+                    Math.max(0.05, this.color.a + (Math.random() - 0.5) * 0.2)
+                );
+            } else {
+                const channel = property as 'r' | 'g' | 'b';
+                this.color[channel] = Math.min(
+                    255,
+                    Math.max(0, Math.floor(this.color[channel] + (Math.random() - 0.5) * 50))
+                );
+            }
+        }
+
+        // 30% chance to mutate a point coordinate
+        if (Math.random() < 0.3 && this.points.length > 0) {
+            const pIndex = Math.floor(Math.random() * this.points.length);
+            this.points[pIndex].x = Math.min(
+                canvasWidth,
+                Math.max(0, this.points[pIndex].x + (Math.random() - 0.5) * 40)
+            );
+            this.points[pIndex].y = Math.min(
+                canvasHeight,
+                Math.max(0, this.points[pIndex].y + (Math.random() - 0.5) * 40)
+            );
+        }
+    }
 }
