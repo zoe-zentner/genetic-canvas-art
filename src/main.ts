@@ -5,6 +5,9 @@ import { calculateFitness } from './Fitness';
 const canvas = document.getElementById('artCanvas') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d');
 
+const targetCanvas = document.getElementById('targetCanvas') as HTMLCanvasElement;
+const targetCtx = targetCanvas.getContext('2d');
+
 const uiGen = document.getElementById('ui-gen');
 const uiPoly = document.getElementById('ui-poly');
 const uiScore = document.getElementById('ui-score');
@@ -18,6 +21,11 @@ if (ctx) {
     img.src = '/target.png';
 
     img.onload = () => {
+        // draw the original image to the comparison canvas
+        if (targetCtx) {
+            targetCtx.drawImage(img, 0, 0, targetCanvas.width, targetCanvas.height);
+        }
+
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         targetPixelData = imageData.data;
