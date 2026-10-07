@@ -6,7 +6,7 @@ This project combines browser rendering, worker-based fitness scoring, and itera
 
 ## Gallery
 
-[![Demo video](./assets/evolved-result.png)](./assets/demo-video.mp4)
+[▶ Watch demo video](./assets/demo-video.mp4)
 
 ![Target reference](./assets/target-reference.png)
 
