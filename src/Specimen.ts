@@ -38,12 +38,15 @@ export class Specimen {
         return clonedSpecimen;
     }
 
-    mutate(canvasWidth: number, canvasHeight: number) {
+    mutate(canvasWidth: number, canvasHeight: number, temperature: number = 1.0) {
         for (const poly of this.polygons) {
             if (Math.random() < 0.2) {
-                // 20% chance per polygon
-                poly.mutate(canvasWidth, canvasHeight);
+                poly.mutate(canvasWidth, canvasHeight, temperature);
             }
         }
+    }
+
+    addPolygon(canvasWidth: number, canvasHeight: number) {
+        this.polygons.push(new Polygon(canvasWidth, canvasHeight, 3));
     }
 }

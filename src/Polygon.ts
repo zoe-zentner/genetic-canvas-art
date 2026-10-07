@@ -39,20 +39,28 @@ export class Polygon {
         ctx.fill();
     }
 
-    mutate(canvasWidth: number, canvasHeight: number) {
+    mutate(canvasWidth: number, canvasHeight: number, temperature: number = 1.0) {
+        // ensure temperature never drops below 0.05 so evolution never completely stops
+        const clampedTemp = Math.max(0.05, temperature);
+        const colorShift = 50 * clampedTemp;
+        const posShift = 40 * clampedTemp;
+
         // 30% change to mutate a color property
         if (Math.random() < 0.3) {
             const property = ['r', 'g', 'b', 'a'][Math.floor(Math.random() * 4)];
             if (property === 'a') {
                 this.color.a = Math.min(
                     1,
-                    Math.max(0.05, this.color.a + (Math.random() - 0.5) * 0.2)
+                    Math.max(0.05, this.color.a + (Math.random() - 0.5) * 0.2 * clampedTemp)
                 );
             } else {
                 const channel = property as 'r' | 'g' | 'b';
                 this.color[channel] = Math.min(
                     255,
-                    Math.max(0, Math.floor(this.color[channel] + (Math.random() - 0.5) * 50))
+                    Math.max(
+                        0,
+                        Math.floor(this.color[channel] + (Math.random() - 0.5) * colorShift)
+                    )
                 );
             }
         }
@@ -62,11 +70,11 @@ export class Polygon {
             const pIndex = Math.floor(Math.random() * this.points.length);
             this.points[pIndex].x = Math.min(
                 canvasWidth,
-                Math.max(0, this.points[pIndex].x + (Math.random() - 0.5) * 40)
+                Math.max(0, this.points[pIndex].x + (Math.random() - 0.5) * posShift)
             );
             this.points[pIndex].y = Math.min(
                 canvasHeight,
-                Math.max(0, this.points[pIndex].y + (Math.random() - 0.5) * 40)
+                Math.max(0, this.points[pIndex].y + (Math.random() - 0.5) * posShift)
             );
         }
     }
