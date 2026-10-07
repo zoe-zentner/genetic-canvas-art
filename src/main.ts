@@ -5,6 +5,11 @@ import { calculateFitness } from './Fitness';
 const canvas = document.getElementById('artCanvas') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d');
 
+const uiGen = document.getElementById('ui-gen');
+const uiPoly = document.getElementById('ui-poly');
+const uiScore = document.getElementById('ui-score');
+const uiTemp = document.getElementById('ui-temp');
+
 // we will store the target's raw pixel array here
 let targetPixelData: Uint8ClampedArray;
 
@@ -77,6 +82,14 @@ if (ctx) {
                         `Plateau reached! Added polygon. Total: ${bestSpecimen.polygons.length}`
                     );
                 }
+            }
+
+            if (uiGen && uiPoly && uiScore && uiTemp) {
+                uiGen.innerText = generation.toString();
+                uiPoly.innerText = bestSpecimen.polygons.length.toString();
+                uiScore.innerText = bestScore.toLocaleString();
+                const currentTemp = bestScore / initialScore;
+                uiTemp.innerText = currentTemp.toFixed(4);
             }
 
             requestAnimationFrame(evolveLoop);

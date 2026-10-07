@@ -6,8 +6,18 @@
         <title>Genetic Art</title>
     </head>
     <body>
-        <!-- 256x256 keeps the pixel-matching math fast later -->
-        <canvas id="artCanvas" width="256" height="256"></canvas>
+        <div id="app">
+            <!-- 256x256 keeps the pixel-matching math fast -->
+            <canvas id="artCanvas" width="256" height="256"></canvas>
+
+            <div id="dashboard">
+                <h2>Evolution Stats</h2>
+                <p>Generation: <span id="ui-gen">0</span></p>
+                <p>Polygons: <span id="ui-poly">5</span></p>
+                <p>Error Score: <span id="ui-score">0</span></p>
+                <p>Temperature: <span id="ui-temp">1.00</span></p>
+            </div>
+        </div>
         <script type="module" src="/src/main.ts"></script>
     </body>
 </html>
