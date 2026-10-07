@@ -12,6 +12,8 @@ const uiGen = document.getElementById('ui-gen');
 const uiPoly = document.getElementById('ui-poly');
 const uiScore = document.getElementById('ui-score');
 const uiTemp = document.getElementById('ui-temp');
+const toggleButton = document.getElementById('toggle-sim') as HTMLButtonElement | null;
+const resetButton = document.getElementById('reset-sim') as HTMLButtonElement | null;
 
 // we will store the target's raw pixel array here
 let targetPixelData: Uint8ClampedArray;
@@ -41,8 +43,38 @@ if (ctx) {
 
         let generation = 0;
         let generationsSinceImprovement = 0; // tracker for how long we've been stuck
+        let isRunning = true;
+        let animationFrameId = 0;
+
+        const updateHud = () => {
+            if (uiGen && uiPoly && uiScore && uiTemp) {
+                uiGen.innerText = generation.toString();
+                uiPoly.innerText = bestSpecimen.polygons.length.toString();
+                uiScore.innerText = bestScore.toLocaleString();
+                const currentTemp = bestScore / initialScore;
+                uiTemp.innerText = currentTemp.toFixed(4);
+            }
+        };
+
+        const resetSimulation = () => {
+            generation = 0;
+            generationsSinceImprovement = 0;
+            bestSpecimen = new Specimen(canvas.width, canvas.height, 5);
+            bestSpecimen.draw(ctx, canvas.width, canvas.height);
+            bestScore = calculateFitness(ctx, canvas.width, canvas.height, targetPixelData);
+            if (toggleButton) {
+                toggleButton.textContent = 'Pause';
+            }
+            isRunning = true;
+            updateHud();
+            animationFrameId = requestAnimationFrame(evolveLoop);
+        };
 
         const evolveLoop = () => {
+            if (!isRunning) {
+                return;
+            }
+
             // run multiple mutation attempts per frame so evolution happens fast
             for (let i = 0; i < 10; i++) {
                 generation++;
@@ -75,7 +107,7 @@ if (ctx) {
                     );
                 }
 
-                // plateu check: if stuck for 500 generations, add a new polygon
+                // plateau check: if stuck for 500 generations, add a new polygon
                 if (generationsSinceImprovement > 500) {
                     bestSpecimen.addPolygon(canvas.width, canvas.height);
                     generationsSinceImprovement = 0;
@@ -92,16 +124,31 @@ if (ctx) {
                 }
             }
 
-            if (uiGen && uiPoly && uiScore && uiTemp) {
-                uiGen.innerText = generation.toString();
-                uiPoly.innerText = bestSpecimen.polygons.length.toString();
-                uiScore.innerText = bestScore.toLocaleString();
-                const currentTemp = bestScore / initialScore;
-                uiTemp.innerText = currentTemp.toFixed(4);
-            }
-
-            requestAnimationFrame(evolveLoop);
+            updateHud();
+            animationFrameId = requestAnimationFrame(evolveLoop);
         };
+
+        if (toggleButton) {
+            toggleButton.addEventListener('click', () => {
+                if (isRunning) {
+                    isRunning = false;
+                    toggleButton.textContent = 'Play';
+                    cancelAnimationFrame(animationFrameId);
+                    return;
+                }
+
+                isRunning = true;
+                toggleButton.textContent = 'Pause';
+                animationFrameId = requestAnimationFrame(evolveLoop);
+            });
+        }
+
+        if (resetButton) {
+            resetButton.addEventListener('click', () => {
+                cancelAnimationFrame(animationFrameId);
+                resetSimulation();
+            });
+        }
 
         requestAnimationFrame(evolveLoop);
     };
