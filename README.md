@@ -6,11 +6,11 @@ This project combines browser rendering, worker-based fitness scoring, and itera
 
 ## Gallery
 
-<video src="./assets/demo-video.mp4" autoplay muted loop playsinline controls width="100%"></video>
-
-![Evolved result](./assets/evolved-result.png)
+[![Demo video](./assets/evolved-result.png)](./assets/demo-video.mp4)
 
 ![Target reference](./assets/target-reference.png)
+
+![Evolved result](./assets/evolved-result.png)
 
 ## Features
 
