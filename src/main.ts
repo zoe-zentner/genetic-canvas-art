@@ -14,9 +14,36 @@ const uiTemp = document.getElementById('ui-temp');
 const toggleButton = document.getElementById('toggle-sim') as HTMLButtonElement | null;
 const resetButton = document.getElementById('reset-sim') as HTMLButtonElement | null;
 const exportButton = document.getElementById('export-svg') as HTMLButtonElement | null;
+const uploadInput = document.getElementById('image-upload') as HTMLInputElement | null;
 
 // we will store the target's raw pixel array here
 let targetPixelData: Uint8ClampedArray;
+
+const normalizeTargetImage = (img: HTMLImageElement) => {
+    const normalizedCanvas = document.createElement('canvas');
+    normalizedCanvas.width = 256;
+    normalizedCanvas.height = 256;
+
+    const normalizedCtx = normalizedCanvas.getContext('2d');
+    if (!normalizedCtx || !targetCtx) {
+        return;
+    }
+
+    normalizedCtx.fillStyle = 'white';
+    normalizedCtx.fillRect(0, 0, 256, 256);
+
+    const scale = Math.min(256 / img.width, 256 / img.height);
+    const drawWidth = img.width * scale;
+    const drawHeight = img.height * scale;
+    const offsetX = (256 - drawWidth) / 2;
+    const offsetY = (256 - drawHeight) / 2;
+
+    normalizedCtx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+
+    targetCtx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
+    targetCtx.drawImage(normalizedCanvas, 0, 0);
+    targetPixelData = normalizedCtx.getImageData(0, 0, 256, 256).data;
+};
 
 const fitnessWorker = new Worker(new URL('./FitnessWorker.ts', import.meta.url), {
     type: 'module',
@@ -51,9 +78,7 @@ if (ctx) {
             targetCtx.drawImage(img, 0, 0, targetCanvas.width, targetCanvas.height);
         }
 
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        targetPixelData = imageData.data;
+        normalizeTargetImage(img);
         console.log('Target data loaded! Array length:', targetPixelData.length);
 
         // initialize our starting parent specimen and score it
@@ -198,6 +223,26 @@ if (ctx) {
                 link.download = 'genetic-art.svg';
                 link.click();
                 URL.revokeObjectURL(url);
+            });
+        }
+
+        if (uploadInput) {
+            uploadInput.addEventListener('change', (event) => {
+                const file = (event.target as HTMLInputElement).files?.[0];
+                if (!file) {
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const uploadedImage = new Image();
+                    uploadedImage.onload = () => {
+                        normalizeTargetImage(uploadedImage);
+                        console.log('Uploaded image normalized to target canvas.');
+                    };
+                    uploadedImage.src = String(reader.result);
+                };
+                reader.readAsDataURL(file);
             });
         }
 
