@@ -1,6 +1,5 @@
 import './style.css';
 import { Specimen } from './Specimen';
-import { calculateFitness } from './Fitness';
 
 const canvas = document.getElementById('artCanvas') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d');
@@ -18,11 +17,34 @@ const resetButton = document.getElementById('reset-sim') as HTMLButtonElement | 
 // we will store the target's raw pixel array here
 let targetPixelData: Uint8ClampedArray;
 
+const fitnessWorker = new Worker(new URL('./FitnessWorker.ts', import.meta.url), {
+    type: 'module',
+});
+
+const evaluateFitnessAsync = (
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    height: number,
+    targetPixels: Uint8ClampedArray
+): Promise<number> => {
+    return new Promise((resolve) => {
+        const currentPixels = ctx.getImageData(0, 0, width, height).data;
+
+        const handleMessage = (event: MessageEvent<{ score: number }>) => {
+            resolve(event.data.score);
+            fitnessWorker.removeEventListener('message', handleMessage);
+        };
+
+        fitnessWorker.addEventListener('message', handleMessage);
+        fitnessWorker.postMessage({ currentPixels, targetPixels });
+    });
+};
+
 if (ctx) {
     const img = new Image();
     img.src = '/target.png';
 
-    img.onload = () => {
+    img.onload = async () => {
         // draw the original image to the comparison canvas
         if (targetCtx) {
             targetCtx.drawImage(img, 0, 0, targetCanvas.width, targetCanvas.height);
@@ -37,7 +59,12 @@ if (ctx) {
         let bestSpecimen = new Specimen(canvas.width, canvas.height, 5);
         bestSpecimen.draw(ctx, canvas.width, canvas.height);
 
-        let bestScore = calculateFitness(ctx, canvas.width, canvas.height, targetPixelData);
+        let bestScore = await evaluateFitnessAsync(
+            ctx,
+            canvas.width,
+            canvas.height,
+            targetPixelData
+        );
         const initialScore = bestScore;
         console.log('Initial random specimen error score:', bestScore);
 
@@ -56,12 +83,17 @@ if (ctx) {
             }
         };
 
-        const resetSimulation = () => {
+        const resetSimulation = async () => {
             generation = 0;
             generationsSinceImprovement = 0;
             bestSpecimen = new Specimen(canvas.width, canvas.height, 5);
             bestSpecimen.draw(ctx, canvas.width, canvas.height);
-            bestScore = calculateFitness(ctx, canvas.width, canvas.height, targetPixelData);
+            bestScore = await evaluateFitnessAsync(
+                ctx,
+                canvas.width,
+                canvas.height,
+                targetPixelData
+            );
             if (toggleButton) {
                 toggleButton.textContent = 'Pause';
             }
@@ -70,7 +102,7 @@ if (ctx) {
             animationFrameId = requestAnimationFrame(evolveLoop);
         };
 
-        const evolveLoop = () => {
+        const evolveLoop = async () => {
             if (!isRunning) {
                 return;
             }
@@ -87,7 +119,7 @@ if (ctx) {
 
                 // draw and grade the child
                 child.draw(ctx, canvas.width, canvas.height);
-                const childScore = calculateFitness(
+                const childScore = await evaluateFitnessAsync(
                     ctx,
                     canvas.width,
                     canvas.height,
@@ -116,7 +148,12 @@ if (ctx) {
                     // a new random triangle usually worsens the score initially,
                     // and we need the loop to accept this temporary dip.
                     bestSpecimen.draw(ctx, canvas.width, canvas.height);
-                    bestScore = calculateFitness(ctx, canvas.width, canvas.height, targetPixelData);
+                    bestScore = await evaluateFitnessAsync(
+                        ctx,
+                        canvas.width,
+                        canvas.height,
+                        targetPixelData
+                    );
 
                     console.log(
                         `Plateau reached! Added polygon. Total: ${bestSpecimen.polygons.length}`
