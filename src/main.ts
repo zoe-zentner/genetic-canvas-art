@@ -43,28 +43,43 @@ const normalizeTargetImage = (img: HTMLImageElement) => {
     targetCtx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
     targetCtx.drawImage(normalizedCanvas, 0, 0);
     targetPixelData = normalizedCtx.getImageData(0, 0, 256, 256).data;
+
+    fitnessWorker.postMessage({
+        type: 'init',
+        targetPixels: targetPixelData,
+    });
 };
 
 const fitnessWorker = new Worker(new URL('./FitnessWorker.ts', import.meta.url), {
     type: 'module',
 });
 
+let fitnessRequestId = 0;
+
 const evaluateFitnessAsync = (
     ctx: CanvasRenderingContext2D,
     width: number,
-    height: number,
-    targetPixels: Uint8ClampedArray
+    height: number
 ): Promise<number> => {
     return new Promise((resolve) => {
+        const requestId = ++fitnessRequestId;
         const currentPixels = ctx.getImageData(0, 0, width, height).data;
 
-        const handleMessage = (event: MessageEvent<{ score: number }>) => {
+        const handleMessage = (event: MessageEvent<{ requestId: number; score: number }>) => {
+            if (event.data.requestId !== requestId) {
+                return;
+            }
+
             resolve(event.data.score);
             fitnessWorker.removeEventListener('message', handleMessage);
         };
 
         fitnessWorker.addEventListener('message', handleMessage);
-        fitnessWorker.postMessage({ currentPixels, targetPixels });
+        fitnessWorker.postMessage({
+            type: 'evaluate',
+            requestId,
+            currentPixels,
+        });
     });
 };
 
@@ -85,72 +100,77 @@ if (ctx) {
         let bestSpecimen = new Specimen(canvas.width, canvas.height, 5);
         bestSpecimen.draw(ctx, canvas.width, canvas.height);
 
-        let bestScore = await evaluateFitnessAsync(
-            ctx,
-            canvas.width,
-            canvas.height,
-            targetPixelData
-        );
-        const initialScore = bestScore;
+        let bestScore = await evaluateFitnessAsync(ctx, canvas.width, canvas.height);
+        let initialScore = bestScore;
         console.log('Initial random specimen error score:', bestScore);
 
         let generation = 0;
         let generationsSinceImprovement = 0; // tracker for how long we've been stuck
         let isRunning = true;
         let animationFrameId = 0;
+        let simulationVersion = 0;
 
         const updateHud = () => {
             if (uiGen && uiPoly && uiScore && uiTemp) {
                 uiGen.innerText = generation.toString();
                 uiPoly.innerText = bestSpecimen.polygons.length.toString();
                 uiScore.innerText = bestScore.toLocaleString();
-                const currentTemp = bestScore / initialScore;
+                const baselineScore = Math.max(initialScore, 1);
+                const currentTemp = bestScore / baselineScore;
                 uiTemp.innerText = currentTemp.toFixed(4);
             }
         };
 
         const resetSimulation = async () => {
+            const runVersion = ++simulationVersion;
             generation = 0;
             generationsSinceImprovement = 0;
             bestSpecimen = new Specimen(canvas.width, canvas.height, 5);
             bestSpecimen.draw(ctx, canvas.width, canvas.height);
-            bestScore = await evaluateFitnessAsync(
-                ctx,
-                canvas.width,
-                canvas.height,
-                targetPixelData
-            );
+            bestScore = await evaluateFitnessAsync(ctx, canvas.width, canvas.height);
+
+            if (simulationVersion !== runVersion) {
+                return;
+            }
+
+            initialScore = bestScore;
             if (toggleButton) {
                 toggleButton.textContent = 'Pause';
             }
             isRunning = true;
             updateHud();
+            cancelAnimationFrame(animationFrameId);
             animationFrameId = requestAnimationFrame(evolveLoop);
         };
 
         const evolveLoop = async () => {
-            if (!isRunning) {
+            const loopVersion = simulationVersion;
+
+            if (!isRunning || simulationVersion !== loopVersion) {
                 return;
             }
 
             // run multiple mutation attempts per frame so evolution happens fast
             for (let i = 0; i < 10; i++) {
+                if (!isRunning || simulationVersion !== loopVersion) {
+                    return;
+                }
+
                 generation++;
                 generationsSinceImprovement++;
 
                 // clone the current best and mutate the clone
-                const temperature = bestScore / initialScore;
+                const temperature = bestScore / Math.max(initialScore, 1);
                 const child = bestSpecimen.clone();
                 child.mutate(canvas.width, canvas.height, temperature);
 
                 // draw and grade the child
                 child.draw(ctx, canvas.width, canvas.height);
-                const childScore = await evaluateFitnessAsync(
-                    ctx,
-                    canvas.width,
-                    canvas.height,
-                    targetPixelData
-                );
+                const childScore = await evaluateFitnessAsync(ctx, canvas.width, canvas.height);
+
+                if (!isRunning || simulationVersion !== loopVersion) {
+                    return;
+                }
 
                 // if the child has a lower error score, it becomes our new parent!
                 if (childScore < bestScore) {
@@ -165,26 +185,30 @@ if (ctx) {
                     );
                 }
 
-                // plateau check: if stuck for 500 generations, add a new polygon
-                if (generationsSinceImprovement > 500) {
+                // plateau check: dynamically scale based on complexity
+                // 5 polygons = wait ~75 gens, 50 polygons = wait ~750 gens
+                const plateauThreshold = bestSpecimen.polygons.length * 8;
+
+                if (generationsSinceImprovement > plateauThreshold) {
                     bestSpecimen.addPolygon(canvas.width, canvas.height);
                     generationsSinceImprovement = 0;
 
                     // we must redraw and recalculate the parent's score immediately.
-                    // a new random triangle usually worsens the score initially,
-                    // and we need the loop to accept this temporary dip.
                     bestSpecimen.draw(ctx, canvas.width, canvas.height);
-                    bestScore = await evaluateFitnessAsync(
-                        ctx,
-                        canvas.width,
-                        canvas.height,
-                        targetPixelData
-                    );
+                    bestScore = await evaluateFitnessAsync(ctx, canvas.width, canvas.height);
+
+                    if (!isRunning || simulationVersion !== loopVersion) {
+                        return;
+                    }
 
                     console.log(
                         `Plateau reached! Added polygon. Total: ${bestSpecimen.polygons.length}`
                     );
                 }
+            }
+
+            if (!isRunning || simulationVersion !== loopVersion) {
+                return;
             }
 
             updateHud();
@@ -200,6 +224,7 @@ if (ctx) {
                     return;
                 }
 
+                simulationVersion++;
                 isRunning = true;
                 toggleButton.textContent = 'Pause';
                 animationFrameId = requestAnimationFrame(evolveLoop);
@@ -236,9 +261,11 @@ if (ctx) {
                 const reader = new FileReader();
                 reader.onload = () => {
                     const uploadedImage = new Image();
-                    uploadedImage.onload = () => {
+                    uploadedImage.onload = async () => {
                         normalizeTargetImage(uploadedImage);
                         console.log('Uploaded image normalized to target canvas.');
+                        cancelAnimationFrame(animationFrameId);
+                        await resetSimulation();
                     };
                     uploadedImage.src = String(reader.result);
                 };
