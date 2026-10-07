@@ -49,4 +49,21 @@ export class Specimen {
     addPolygon(canvasWidth: number, canvasHeight: number) {
         this.polygons.push(new Polygon(canvasWidth, canvasHeight, 3));
     }
+
+    toSvg(width: number, height: number): string {
+        const polygons = this.polygons
+            .map((poly) => {
+                const points = poly.points.map((point) => `${point.x},${point.y}`).join(' ');
+                const fill = `rgba(${poly.color.r}, ${poly.color.g}, ${poly.color.b}, ${poly.color.a})`;
+                return `<polygon points="${points}" fill="${fill}" />`;
+            })
+            .join('');
+
+        return `
+            <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+                <rect width="${width}" height="${height}" fill="white" />
+                ${polygons}
+            </svg>
+        `.trim();
+    }
 }

@@ -13,6 +13,7 @@ const uiScore = document.getElementById('ui-score');
 const uiTemp = document.getElementById('ui-temp');
 const toggleButton = document.getElementById('toggle-sim') as HTMLButtonElement | null;
 const resetButton = document.getElementById('reset-sim') as HTMLButtonElement | null;
+const exportButton = document.getElementById('export-svg') as HTMLButtonElement | null;
 
 // we will store the target's raw pixel array here
 let targetPixelData: Uint8ClampedArray;
@@ -184,6 +185,19 @@ if (ctx) {
             resetButton.addEventListener('click', () => {
                 cancelAnimationFrame(animationFrameId);
                 resetSimulation();
+            });
+        }
+
+        if (exportButton) {
+            exportButton.addEventListener('click', () => {
+                const svg = bestSpecimen.toSvg(canvas.width, canvas.height);
+                const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'genetic-art.svg';
+                link.click();
+                URL.revokeObjectURL(url);
             });
         }
 
