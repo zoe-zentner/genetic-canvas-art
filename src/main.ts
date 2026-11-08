@@ -85,7 +85,7 @@ const evaluateFitnessAsync = (
 
 if (ctx) {
     const img = new Image();
-    img.src = '/target.png';
+    img.src = `${import.meta.env.BASE_URL}target.png`;
 
     img.onload = async () => {
         // draw the original image to the comparison canvas

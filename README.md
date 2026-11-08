@@ -4,6 +4,8 @@ An interactive generative art simulator that evolves polygons to match a target 
 
 This project combines browser rendering, worker-based fitness scoring, and iterative mutation to recreate an image using geometric primitives.
 
+**[Try it yourself](https://zoe-zentner.github.io/genetic-canvas-art/)**
+
 ## Gallery
 
 [▶ Watch demo video](./assets/demo-video.mp4)
@@ -38,6 +40,8 @@ This project combines browser rendering, worker-based fitness scoring, and itera
 - `README.md` — project overview and setup guide
 
 ## Getting started
+
+To try it without installing anything, use the [live demo](https://zoe-zentner.github.io/genetic-canvas-art/). Or run it locally as follows:
 
 ### Prerequisites
 
